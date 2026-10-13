@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MePanel - Minecraft Server Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-900 text-gray-100 font-sans min-h-screen flex flex-col">
+
+    <!-- Navbar -->
+    <header class="bg-gray-800 border-b border-gray-700 p-4 flex justify-between items-center shadow-md">
+        <div class="flex items-center space-x-3">
+            <i class="fa-solid fa-server text-indigo-400 text-2xl"></i>
+            <span class="text-xl font-bold tracking-wide">MePanel</span>
+        </div>
+        <button onclick="openSettings()" class="bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded-lg text-sm transition flex items-center space-x-2">
+            <i class="fa-solid fa-gear"></i>
+            <span>Einstellungen</span>
+        </button>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-6 grid grid-cols-1 md:grid-cols-4 gap-6">
+        
+        <!-- Sidebar: Server List & Creation -->
+        <div class="md:col-span-1 space-y-6">
+            <div class="bg-gray-800 border border-gray-700 rounded-xl p-4 shadow-lg">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="font-semibold text-lg">Server</h2>
+                    <button onclick="openCreateModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white p-2 rounded-lg text-sm transition">
+                        <i class="fa-solid fa-plus"></i>
+                    </button>
+                </div>
+                <div id="serverList" class="space-y-2">
+                    <p class="text-sm text-gray-400">Lade Server...</p>
+                </div>
+            </div>
+
+            <!-- Node Stats Box -->
+            <div class="bg-gray-800 border border-gray-700 rounded-xl p-4 shadow-lg">
+                <h2 class="font-semibold text-lg mb-3">Node Auslastung</h2>
+                <div class="space-y-3 text-sm">
+                    <div>
+                        <div class="flex justify-between mb-1">
+                            <span>CPU</span>
+                            <span id="statCpu">0%</span>
+                        </div>
+                        <div class="w-full bg-gray-700 h-2 rounded-full overflow-hidden">
+                            <div id="barCpu" class="bg-indigo-500 h-full w-0 transition-all"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between mb-1">
+                            <span>RAM</span>
+                            <span id="statRam">0 MB</span>
+                        </div>
+                        <div class="w-full bg-gray-700 h-2 rounded-full overflow-hidden">
+                            <div id="barRam" class="bg-green-500 h-full w-0 transition-all"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between mb-1">
+                            <span>Festplatte</span>
+                            <span id="statDisk">0%</span>
+                        </div>
+                        <div class="w-full bg-gray-700 h-2 rounded-full overflow-hidden">
+                            <div id="barDisk" class="bg-yellow-500 h-full w-0 transition-all"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content Area: Server Management -->
+        <div id="serverDetailView" class="md:col-span-3 bg-gray-800 border border-gray-700 rounded-xl p-6 shadow-lg hidden flex flex-col justify-between">
+            <div>
+                <!-- Server Header -->
+                <div class="flex flex-wrap justify-between items-center border-b border-gray-700 pb-4 mb-4 gap-4">
+                    <div>
+                        <h1 id="selectedServerName" class="text-2xl font-bold">Server-Name</h1>
+                        <span id="selectedServerStatus" class="text-xs px-2 py-1 rounded bg-gray-700 uppercase">Offline</span>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button onclick="sendAction('start')" class="bg-green-600 hover:bg-green-500 px-4 py-2 rounded-lg text-sm font-medium transition"><i class="fa-solid fa-play mr-1"></i> Start</button>
+                        <button onclick="sendAction('stop')" class="bg-red-600 hover:bg-red-500 px-4 py-2 rounded-lg text-sm font-medium transition"><i class="fa-solid fa-stop mr-1"></i> Stopp</button>
+                        <button onclick="openFileManager()" class="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg text-sm font-medium transition"><i class="fa-solid fa-file-lines mr-1"></i> Dateien</button>
+                    </div>
+                </div>
+
+                <!-- Console Output -->
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-400 mb-2">Konsole</label>
+                    <div id="consoleOutput" class="bg-gray-950 font-mono text-xs text-green-400 p-4 rounded-lg h-96 overflow-y-auto whitespace-pre-wrap border border-gray-800 shadow-inner">Wähle einen Server aus oder starte ihn, um Logs zu sehen...</div>
+                </div>
+            </div>
+
+            <!-- Command Input -->
+            <div class="flex space-x-2">
+                <input type="text" id="commandInput" placeholder="Befehl eingeben (z.B. op DeinName)..." class="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-indigo-500" onkeydown="if(event.key === 'Enter') sendCommand()">
+                <button onclick="sendCommand()" class="bg-indigo-600 hover:bg-indigo-500 px-5 py-2 rounded-lg text-sm font-medium transition">Senden</button>
+            </div>
+        </div>
+
+        <!-- Empty State if no server selected -->
+        <div id="noServerSelected" class="md:col-span-3 bg-gray-800 border border-gray-700 rounded-xl p-6 flex flex-col items-center justify-center text-center text-gray-400 shadow-lg">
+            <i class="fa-solid fa-server text-5xl mb-3 text-gray-600"></i>
+            <p class="text-lg">Wähle links einen Server aus oder erstelle einen neuen.</p>
+        </div>
+    </main>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="fixed inset-0 bg-black/70 flex items-center justify-center hidden z-50">
+        <div class="bg-gray-800 border border-gray-700 p-6 rounded-xl w-full max-w-md shadow-2xl">
+            <h2 class="text-xl font-bold mb-4">API Einstellungen</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Backend URL (Cloudflare Tunnel)</label>
+                    <input type="text" id="apiUrl" placeholder="https://panel-api.deinedomain.de" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">API Key</label>
+                    <input type="password" id="apiKey" placeholder="Dein_Super_Geheimer_Api_Key_123" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
+                </div>
+            </div>
+            <div class="flex justify-end space-x-2 mt-6">
+                <button onclick="closeSettings()" class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg text-sm transition">Abbrechen</button>
+                <button onclick="saveSettings()" class="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-lg text-sm transition">Speichern</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Server Modal -->
+    <div id="createModal" class="fixed inset-0 bg-black/70 flex items-center justify-center hidden z-50">
+        <div class="bg-gray-800 border border-gray-700 p-6 rounded-xl w-full max-w-md shadow-2xl">
+            <h2 class="text-xl font-bold mb-4">Minecraft Server erstellen</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Server Name (keine Leerzeichen)</label>
+                    <input type="text" id="newServerName" placeholder="survival" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">RAM (z.B. 2G oder 1024M)</label>
+                    <input type="text" id="newServerRam" value="2G" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Server.jar Download-Link (z.B. PaperMC)</label>
+                    <input type="text" id="newServerJar" placeholder="https://api.papermc.io/v2/projects/paper/versions/1.20.4/builds/496/downloads/paper-1.20.4-496.jar" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-sm focus:outline-none focus:border-indigo-500">
+                </div>
+            </div>
+            <div class="flex justify-end space-x-2 mt-6">
+                <button onclick="closeCreateModal()" class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg text-sm transition">Abbrechen</button>
+                <button onclick="createServer()" class="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-lg text-sm transition">Erstellen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- File Manager Modal -->
+    <div id="fileModal" class="fixed inset-0 bg-black/70 flex items-center justify-center hidden z-50">
+        <div class="bg-gray-800 border border-gray-700 p-6 rounded-xl w-full max-w-2xl shadow-2xl flex flex-col h-[80vh]">
+            <div class="flex justify-between items-center mb-4">
+                <h2 id="fileModalTitle" class="text-xl font-bold">server.properties</h2>
+                <button onclick="closeFileManager()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <textarea id="fileContent" class="w-full flex-1 bg-gray-950 font-mono text-xs text-gray-200 p-3 rounded-lg border border-gray-800 focus:outline-none focus:border-indigo-500 resize-none"></textarea>
+            <div class="flex justify-end space-x-2 mt-4">
+                <button onclick="closeFileManager()" class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg text-sm transition">Schließen</button>
+                <button onclick="saveFileContent()" class="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-lg text-sm transition">Speichern</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Logic -->
+    <script>
+        let currentServer = null;
+        let statsInterval = null;
+        let logsInterval = null;
+
+        function getBaseUrl() { return localStorage.getItem('apiUrl') || ''; }
+        function getApiKey() { return localStorage.getItem('apiKey') || ''; }
+
+        function openSettings() {
+            document.getElementById('apiUrl').value = getBaseUrl();
+            document.getElementById('apiKey').value = getApiKey();
+            document.getElementById('settingsModal').classList.remove('hidden');
+        }
+        function closeSettings() { document.getElementById('settingsModal').classList.add('hidden'); }
+        function saveSettings() {
+            localStorage.setItem('apiUrl', document.getElementById('apiUrl').value.replace(/\/$/, ""));
+            localStorage.setItem('apiKey', document.getElementById('apiKey').value);
+            closeSettings();
+            initDashboard();
+        }
+
+        function openCreateModal() { document.getElementById('createModal').classList.remove('hidden'); }
+        function closeCreateModal() { document.getElementById('createModal').classList.add('hidden'); }
+
+        async function apiCall(endpoint, method = 'GET', data = null) {
+            const url = getBaseUrl() + endpoint;
+            const headers = { 'Authorization': 'Bearer ' + getApiKey() };
+            if (data) headers['Content-Type'] = 'application/json';
+
+            try {
+                const res = await fetch(url, { method, headers, body: data ? JSON.stringify(data) : null });
+                if (!res.ok) throw new Error('API Fehler: ' + res.status);
+                return await res.json();
+            } catch (err) {
+                console.error(err);
+                return null;
+            }
+        }
+
+        async function updateStats() {
+            if (!getBaseUrl()) return;
+            const data = await apiCall('/api/stats');
+            if (!data) return;
+
+            document.getElementById('statCpu').innerText = data.cpu + '%';
+            document.getElementById('barCpu').style.width = data.cpu + '%';
+
+            document.getElementById('statRam').innerText = data.ram_used_mb + ' / ' + data.ram_total_mb + ' MB';
+            document.getElementById('barRam').style.width = data.ram_percent + '%';
+
+            document.getElementById('statDisk').innerText = data.disk_percent + '%';
+            document.getElementById('barDisk').style.width = data.disk_percent + '%';
+        }
+
+        async function loadServers() {
+            if (!getBaseUrl()) return;
+            const servers = await apiCall('/api/servers');
+            if (!servers) return;
+
+            const listEl = document.getElementById('serverList');
+            listEl.innerHTML = '';
+
+            if (servers.length === 0) {
+                listEl.innerHTML = '<p class="text-sm text-gray-400">Keine Server vorhanden.</p>';
+                return;
+            }
+
+            servers.forEach(srv => {
+                const btn = document.createElement('button');
+                btn.className = `w-full text-left px-3 py-2 rounded-lg text-sm flex justify-between items-center transition ${currentServer === srv.name ? 'bg-indigo-600 text-white' : 'bg-gray-700/50 hover:bg-gray-700'}`;
+                btn.innerHTML = `<span>${srv.name}</span> <span class="w-2 h-2 rounded-full ${srv.status === 'online' ? 'bg-green-400' : 'bg-red-400'}"></span>`;
+                btn.onclick = () => selectServer(srv.name, srv.status);
+                listEl.appendChild(btn);
+            });
+        }
+
+        function selectServer(name, status) {
+            currentServer = name;
+            document.getElementById('noServerSelected').classList.add('hidden');
+            document.getElementById('serverDetailView').classList.remove('hidden');
+            document.getElementById('selectedServerName').innerText = name;
+            
+            const statusEl = document.getElementById('selectedServerStatus');
+            statusEl.innerText = status;
+            statusEl.className = `text-xs px-2 py-1 rounded uppercase font-semibold ${status === 'online' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`;
+
+            loadServers();
+            fetchLogs();
+            if (logsInterval) clearInterval(logsInterval);
+            logsInterval = setInterval(fetchLogs, 3000); // Alle 3 Sek Logs aktualisieren
+        }
+
+        async function fetchLogs() {
+            if (!currentServer) return;
+            const data = await apiCall(`/api/servers/${currentServer}/logs`);
+            if (data && data.logs) {
+                const consoleEl = document.getElementById('consoleOutput');
+                const isAtBottom = consoleEl.scrollHeight - consoleEl.scrollTop <= consoleEl.clientHeight + 50;
+                consoleEl.innerText = data.logs;
+                if (isAtBottom) consoleEl.scrollTop = consoleEl.scrollHeight;
+            }
+        }
+
+        async function sendAction(action) {
+            if (!currentServer) return;
+            await apiCall(`/api/servers/${currentServer}/action`, 'POST', { action });
+            setTimeout(loadServers, 1000);
+            setTimeout(fetchLogs, 1000);
+        }
+
+        async function sendCommand() {
+            if (!currentServer) return;
+            const input = document.getElementById('commandInput');
+            const command = input.value.trim();
+            if (!command) return;
+
+            await apiCall(`/api/servers/${currentServer}/action`, 'POST', { action: 'command', command });
+            input.value = '';
+            setTimeout(fetchLogs, 500);
+        }
+
+        async function createServer() {
+            const name = document.getElementById('newServerName').value.trim();
+            const ram = document.getElementById('newServerRam').value.trim();
+            const jar_url = document.getElementById('newServerJar').value.trim();
+
+            if (!name || !jar_url) { alert('Bitte Name und JAR-Link angeben!'); return; }
+
+            const res = await apiCall('/api/servers/create', 'POST', { name, ram, jar_url });
+            if (res && res.success) {
+                closeCreateModal();
+                loadServers();
+            } else {
+                alert('Fehler beim Erstellen des Servers.');
+            }
+        }
+
+        async function openFileManager() {
+            if (!currentServer) return;
+            const data = await apiCall(`/api/servers/${currentServer}/files?path=server.properties`);
+            if (data && data.content) {
+                document.getElementById('fileModalTitle').innerText = `${currentServer} - server.properties`;
+                document.getElementById('fileContent').value = data.content;
+                document.getElementById('fileModal').classList.remove('hidden');
+            } else {
+                alert('Konnte Datei nicht laden.');
+            }
+        }
+        function closeFileManager() { document.getElementById('fileModal').classList.add('hidden'); }
+
+        async function saveFileContent() {
+            if (!currentServer) return;
+            const content = document.getElementById('fileContent').value;
+            const res = await apiCall(`/api/servers/${currentServer}/files`, 'POST', { path: 'server.properties', content });
+            if (res && res.success) {
+                alert('Gespeichert!');
+                closeFileManager();
+            } else {
+                alert('Fehler beim Speichern.');
+            }
+        }
+
+        function initDashboard() {
+            if (!getBaseUrl()) {
+                openSettings();
+                return;
+            }
+            updateStats();
+            loadServers();
+            if (statsInterval) clearInterval(statsInterval);
+            statsInterval = setInterval(updateStats, 5000);
+        }
+
+        window.onload = initDashboard;
+    </script>
+</body>
+</html>
